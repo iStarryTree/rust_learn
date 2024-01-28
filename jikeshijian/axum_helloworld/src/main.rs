@@ -1,7 +1,8 @@
 use axum::extract::Query;
 use axum::response::IntoResponse;
-use axum::Form;
+use axum::routing::post;
 use axum::{response::Html, routing::get, Router};
+use axum::{Form, Json};
 use serde::Deserialize;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
@@ -17,6 +18,7 @@ async fn main() {
         .route("/foo", get(handler))
         .route("/query", get(query))
         .route("/form", get(show_form).post(accept_form))
+        .route("/json", post(accept_json))
         .nest_service("/assets", ServeDir::new("assets"))
         .nest_service("/assert2", serve_dir.clone())
         .fallback_service(serve_dir)
@@ -86,4 +88,17 @@ async fn show_form() -> Html<&'static str> {
         </html>
     "#,
     )
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct InputJson {
+    name: String,
+    email: String,
+}
+
+async fn accept_json(Json(input): Json<InputJson>) -> Html<&'static str> {
+    tracing::debug!("json={:?}", input);
+
+    Html("<h3>Test json</h3>")
 }
