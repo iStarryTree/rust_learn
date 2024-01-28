@@ -1,3 +1,6 @@
+use axum::extract::Query;
+use axum::response::IntoResponse;
+use serde::Deserialize;
 use axum::{response::Html, routing::get, Router};
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
@@ -11,6 +14,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/foo", get(handler))
+        .route("/query", get(query))
         .nest_service("/assets", ServeDir::new("assets"))
         .nest_service("/assert2", serve_dir.clone())
         .fallback_service(serve_dir)
@@ -28,4 +32,17 @@ async fn main() {
 
 async fn handler() -> Html<&'static str> {
     Html("<h1>Hello, World</h1>")
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct InputParams {
+    foo: i32,
+    bar: String,
+    third: Option<i32>,
+}
+
+async fn query(Query(params): Query<InputParams>) -> impl IntoResponse {
+    tracing::debug!("params={:?}", params);
+    Html("<h3>Test query</h3>")
 }
