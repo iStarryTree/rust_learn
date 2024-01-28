@@ -1,8 +1,16 @@
 use axum::{response::Html, routing::get, Router};
+use tower_http::services::{ServeDir, ServeFile};
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/", get(handler));
+    let serve_dir =
+        ServeDir::new("assert2").not_found_service(ServeFile::new("assert2/index.html"));
+
+    let app = Router::new()
+        .route("/foo", get(handler))
+        .nest_service("/assets", ServeDir::new("assets"))
+        .nest_service("/assert2", serve_dir.clone())
+        .fallback_service(serve_dir);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
