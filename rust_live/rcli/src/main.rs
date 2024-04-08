@@ -19,7 +19,7 @@ pub struct Player {
 
 fn main()->Result<()> {
     let file = File::open("C:/Users/Starr/Documents/hao/my_github/rust_learn/rust_live/rcli/assets/juventus.csv")?;
-    let mut reader = csv::Reader::from_reader(file);
+    let mut reader = csv::Reader::from_reader(file); 
     for result in reader.deserialize(){
         let player:Player = result?;
         println!("Name:{:}, Position:{:?}, Number:{:?}", player.name, player.position, player.number);
