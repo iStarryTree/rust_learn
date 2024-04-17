@@ -35,7 +35,24 @@ fn thread_test2() {
     }
 }
 
+// 线程的move
+#[allow(dead_code)]
+fn thread_test3() {
+    let v = vec![1, 2, 3];
+
+    let handle = thread::spawn(move || {
+        println!("Here's a vector: {:?}", v);
+    });
+
+    // drop(v); // oh no!
+
+    handle.join().unwrap();
+
+    // println!("{:?}", v); // error: borrow of moved value: `v`
+}
+
 fn main() {
     // thread_test1();
-    thread_test2();
+    // thread_test2();
+    thread_test3();
 }
