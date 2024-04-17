@@ -51,8 +51,26 @@ fn thread_test3() {
     // println!("{:?}", v); // error: borrow of moved value: `v`
 }
 
+// 线程中没有堵塞的循环示范
+#[allow(dead_code)]
+fn thread_test4() {
+    // 创建线程A
+    let thread_a = thread::spawn(move || {
+        // 创建线程B
+        thread::spawn(move || loop {
+            println!("I am threadB");
+        });
+    });
+
+    thread_a.join().unwrap();
+    println!("Child thread is finish!");
+
+    thread::sleep(Duration::from_millis(100));
+}
+
 fn main() {
     // thread_test1();
     // thread_test2();
-    thread_test3();
+    // thread_test3();
+    thread_test4();
 }
