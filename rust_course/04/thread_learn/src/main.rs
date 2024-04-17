@@ -1,3 +1,4 @@
+use std::sync::{Arc, Barrier};
 use std::thread;
 use std::time::Duration;
 
@@ -68,9 +69,30 @@ fn thread_test4() {
     thread::sleep(Duration::from_millis(100));
 }
 
+// 线程屏障
+#[allow(dead_code)]
+fn thread_test5() {
+    let mut handles = Vec::with_capacity(6);
+    let barrier = Arc::new(Barrier::new(6));
+
+    for _ in 0..6 {
+        let b = barrier.clone();
+        handles.push(thread::spawn(move || {
+            println!("before wait");
+            b.wait();
+            println!("after wait");
+        }));
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+}
+
 fn main() {
     // thread_test1();
     // thread_test2();
     // thread_test3();
-    thread_test4();
+    // thread_test4();
+    thread_test5();
 }
