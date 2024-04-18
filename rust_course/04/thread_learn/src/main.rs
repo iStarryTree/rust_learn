@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::sync::{Arc, Barrier};
 use std::thread;
 use std::time::Duration;
@@ -89,10 +90,38 @@ fn thread_test5() {
     }
 }
 
+// thread_local
+#[allow(dead_code)]
+fn thread_test6() {
+    thread_local!(static FOO: RefCell<u32> = RefCell::new(1));
+    FOO.with(|f| {
+        assert_eq!(*f.borrow(), 1);
+        *f.borrow_mut() = 2;
+    });
+
+    // 每个线程开始都拿到线程局部变量的初始值
+    let t = thread::spawn(move || {
+        FOO.with(|f| {
+            assert_eq!(*f.borrow(), 1);
+            *f.borrow_mut() = 3;
+        })
+    });
+
+    t.join().unwrap();
+
+    FOO.with(|f| assert_eq!(*f.borrow(), 2));
+}
+// 结构体中使用
+thread_local!{
+    static FOO: RefCell<usize> = RefCell::new(0);
+    
+}
+
 fn main() {
     // thread_test1();
     // thread_test2();
     // thread_test3();
     // thread_test4();
-    thread_test5();
+    // thread_test5();
+    thread_test6();
 }
