@@ -1,7 +1,9 @@
 use std::cell::RefCell;
-use std::sync::{mpsc, Arc, Barrier};
+use std::sync::{mpsc, Arc, Barrier, Condvar, Mutex, RwLock};
 use std::thread;
 use std::time::Duration;
+
+use tokio::sync::Semaphore;
 
 // 基本线程使用
 #[allow(dead_code)]
@@ -243,6 +245,7 @@ enum Fruit {
     Apple(u8),
     Orange(String),
 }
+#[allow(dead_code)]
 fn thread_test14() {
     let (tx, rx) = mpsc::channel();
 
@@ -257,7 +260,124 @@ fn thread_test14() {
     }
 }
 
-fn main() {
+// 互斥锁
+#[allow(dead_code)]
+fn thread_test15() {
+    let m = Mutex::new(5);
+    {
+        // 获取锁，然后deref为`m`的引用
+        let mut num = m.lock().unwrap();
+        *num = 6;
+    }
+
+    println!("m = {:?}", m);
+}
+
+// 无法运行Rc<T>
+#[allow(dead_code)]
+fn thread_test16() {
+    let counter = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter = Arc::clone(&counter);
+        let handle = thread::spawn(move || {
+            let mut num = counter.lock().unwrap();
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
+}
+
+// 读写锁
+#[allow(dead_code)]
+fn thread_test17() {
+    let lock = RwLock::new(5);
+
+    // 同时允许多个读
+    {
+        let r1 = lock.read().unwrap();
+        let r2 = lock.read().unwrap();
+        assert_eq!(*r1, 5);
+        assert_eq!(*r2, 5);
+    }
+
+    // 只允许一个写
+    {
+        let mut w = lock.write().unwrap();
+        *w += 1;
+        assert_eq!(*w, 6);
+
+        // let r1 = lock.read().unwrap();
+        // assert_eq!(*r1, 6);
+    }
+}
+
+// 条件变量
+#[allow(dead_code)]
+fn thread_test18() {
+    let flag = Arc::new(Mutex::new(false));
+    let cond = Arc::new(Condvar::new());
+    let cflag = flag.clone();
+    let ccond = cond.clone();
+
+    let hdl = thread::spawn(move || {
+        let mut lock = cflag.lock().unwrap();
+        let mut counter = 0;
+
+        while counter < 3 {
+            while !*lock {
+                lock = ccond.wait(lock).unwrap();
+            }
+
+            *lock = false;
+            counter += 1;
+            println!("inner counter:{}", counter);
+        }
+    });
+
+    let mut counter = 0;
+    loop {
+        thread::sleep(Duration::from_millis(1000));
+        *flag.lock().unwrap() = true;
+        counter += 1;
+        if counter > 3 {
+            break;
+        }
+        println!("outside coutner: {}", counter);
+        cond.notify_one();
+    }
+    hdl.join().unwrap();
+    println!("{:?}", flag);
+}
+
+// 信号量
+#[allow(dead_code)]
+async fn thread_test19() {
+    let semaphore = Arc::new(Semaphore::new(3));
+    let mut join_handles=Vec::new();
+
+    for _ in 0..5{
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        join_handles.push(tokio::spawn(async move{
+            // 执行任务
+            drop(permit);
+        }))
+    }
+
+    for handle in join_handles{
+        handle.await.unwrap();
+    }
+}
+
+#[tokio::main]
+async fn main() {
     // thread_test1();
     // thread_test2();
     // thread_test3();
@@ -273,5 +393,12 @@ fn main() {
     // thread_test11();
     // thread_test12();
     // thread_test13();
-    thread_test14();
+    // thread_test14();
+
+    // 线程同步：锁，条件变量，信号量
+    // thread_test15();
+    // thread_test16();
+    // thread_test17();
+    // thread_test18();
+    thread_test19().await;
 }
